@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env
+
+# Logs
+*.log
+
+# VScode
+.vscode/
+
+# Test and coverage reports
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+*.so
+
+# Jupyter Notebook files
+.ipynb_checkpoints
+
+# IDE or Editor specific files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Local configuration files
+*.local
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheel/
+pip-log.txt
+pip-delete-this-directory.txt
