@@ -5,6 +5,7 @@ from app.mongodb import db  # Import the db object from mongodb.py
 logger = logging.getLogger(__name__)
 
 
+# Get the User data based on the user's address.
 async def find_by_address(address: str) -> dict:
     """
     Fetch user data from MongoDB based on the user's address.
@@ -15,3 +16,77 @@ async def find_by_address(address: str) -> dict:
         user_data["_id"] = str(user_data["_id"])
         return user_data
     return None
+
+
+# Get top N users based on KleoPoints. Leaderboard.
+async def get_top_users_by_kleo_points(limit=10):
+    try:
+        # Fetch users sorted by Kleo points in descending order, limit the result to `limit`
+        cursor = (
+            db.users.find(
+                {},  # No filter, fetch all users
+                {
+                    "_id": 0,  # Exclude `_id`
+                    "address": 1,  # Include `address`
+                    "kleo_points": 1,  # Include `kleo_points`
+                },
+            )
+            .sort("kleo_points", -1)  # Sort by `kleo_points` in descending order (-1)
+            .limit(limit)
+        )  # Limit the number of results to `limit`
+
+        # Convert cursor to a list of users asynchronously
+        users = await cursor.to_list(length=limit)
+
+        # Format the result into a leaderboard
+        leaderboard = [
+            {
+                "rank": index,  # Rank starts from 1
+                "address": user["address"],  # Include user's address
+                "kleo_points": user.get("kleo_points", 0),  # Include kleo_points
+            }
+            for index, user in enumerate(users, start=1)
+        ]
+
+        return leaderboard
+    except Exception as e:
+        logger.error(f"An error occurred while fetching top users: {e}")
+        return []
+
+
+# Calculate the user's rank based on their Kleo points compared to other users.
+async def calculate_rank(address: str):
+    try:
+        # First, get the user's Kleo points by address
+        user = await db.users.find_one(
+            {"address": address}, {"kleo_points": 1, "_id": 0}
+        )
+
+        if not user:
+            return {"error": "User not found"}, 404
+
+        user_kleo_points = user.get("kleo_points", 0)
+
+        # Count how many users have more Kleo points
+        higher_ranked_users = await db.users.count_documents(
+            {"kleo_points": {"$gt": user_kleo_points}}
+        )
+
+        # The rank is the number of users with more points, plus one
+        rank = higher_ranked_users + 1
+
+        # Get total number of users
+        total_users = await db.users.count_documents({})
+
+        return {
+            "address": address,
+            "kleo_points": user_kleo_points,
+            "rank": rank,
+            "total_users": total_users,
+        }
+
+    except Exception as e:
+        logger.error(
+            f"An error occurred while calculating rank for address {address}: {e}"
+        )
+        return {"error": "An error occurred while calculating rank"}, 500
