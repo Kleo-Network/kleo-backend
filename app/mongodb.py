@@ -6,6 +6,9 @@ from app.settings import settings
 client = motor.motor_asyncio.AsyncIOMotorClient(settings.DB_URL)
 db = client[settings.DB_NAME]  # Access the database using the name from settings
 
+# Define the user collection
+user_collection = db["users"]
+
 
 async def close_db_connection():
     """

@@ -10,12 +10,45 @@ async def find_by_address(address: str) -> dict:
     """
     Fetch user data from MongoDB based on the user's address.
     """
-    user_data = await db.users.find_one({"address": address})
+    try:
+        # Use find_one to fetch the user data based on the address
+        user_data = await db.users.find_one({"address": address})
 
-    if user_data:
-        user_data["_id"] = str(user_data["_id"])
-        return user_data
-    return None
+        if user_data:
+            user_data["_id"] = str(user_data["_id"])
+            return user_data
+
+    except Exception as e:
+        # Log the exception if needed
+        print(f"An error occurred while fetching user by address: {e}")
+        return None  # Return None on error
+
+
+# Get the User data based on the user's address with complex pipeline.
+async def find_by_address_complex(address: str) -> dict:
+    """
+    Fetch user data from MongoDB based on the user's address using aggregation.
+    """
+    try:
+        pipeline = [
+            {"$match": {"$expr": {"$eq": [{"$toLower": "$address"}, address.lower()]}}},
+            {"$project": {"_id": 0}},  # Exclude the _id field
+        ]
+
+        # Use aggregate with motor to fetch the data
+        user_cursor = db.users.aggregate(pipeline)
+
+        # Convert the cursor to a list to fetch the first document
+        user_of_db = await user_cursor.to_list(length=1)
+
+        if user_of_db:
+            return user_of_db[0]  # Return the first user document
+        return None  # No user found
+
+    except Exception as e:
+        # Log the exception if needed
+        print(f"An error occurred while fetching user by address: {e}")
+        return None  # Return None on error
 
 
 # Get top N users based on KleoPoints. Leaderboard.

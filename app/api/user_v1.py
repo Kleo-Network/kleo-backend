@@ -1,11 +1,13 @@
 # app/api/user_v1.py
 import logging
+import random
 from app.services.activityChart_service import (
     get_top_activities,
     upload_image_to_image_bb,
 )
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from app.services.auth_service import get_jwt_token
 from app.services.user_service import (
     calculate_rank,
     fetch_users_referrals,
@@ -13,6 +15,7 @@ from app.services.user_service import (
     get_activity_json,
     get_top_users_by_kleo_points,
 )
+from app.models.user_models import CreateUserRequest, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -158,3 +161,39 @@ async def get_user_graph(userAddress: str):
         raise HTTPException(
             status_code=500, detail="An error occurred while fetching user graph data."
         )
+
+
+@router.post("/create-user")
+async def create_user(request: CreateUserRequest):
+    """Create a new user or retrieve existing user data."""
+    wallet_address = request.address
+
+    if not wallet_address:
+        raise HTTPException(status_code=400, detail="Address is required")
+
+    user = await find_by_address(wallet_address)  # Call async function
+    if user:
+        try:
+            token = get_jwt_token(wallet_address, wallet_address)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Failed to generate token")
+
+        user_data = {"password": user["slug"], "token": token}
+        return user_data
+
+    random_code = str(random.randint(100, 9999999))
+
+    user = User(address=wallet_address, slug=random_code)
+    response = await user.save(signup=True)  # Call async save method
+
+    try:
+        token = get_jwt_token(wallet_address, wallet_address)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to generate token")
+
+    user_data = {
+        "password": response["slug"],
+        "token": token,
+    }
+
+    return user_data
