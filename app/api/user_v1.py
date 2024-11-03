@@ -1,12 +1,16 @@
 # app/api/user_v1.py
 import logging
-from app.services.activityChart_service import upload_image_to_image_bb
+from app.services.activityChart_service import (
+    get_top_activities,
+    upload_image_to_image_bb,
+)
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from app.services.user_service import (
     calculate_rank,
     fetch_users_referrals,
     find_by_address,
+    get_activity_json,
     get_top_users_by_kleo_points,
 )
 
@@ -130,3 +134,27 @@ async def upload_activity_chart(request: Request):
     except Exception as e:
         logger.error(f"An error occurred while uploading the image: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/get-user-graph/{userAddress}")
+async def get_user_graph(userAddress: str):
+    """Fetch user graph data based on the user's activity."""
+    try:
+        if not userAddress:
+            raise HTTPException(status_code=400, detail="Address is required")
+
+        # Directly get the activity json
+        activity_json = await get_activity_json(userAddress)
+        if not activity_json:
+            return {"error": "No activity data available"}, 404
+
+        # Get top activities from the activity_json
+        top_activities = await get_top_activities(activity_json)
+
+        return {"data": top_activities}
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while fetching user graph data."
+        )

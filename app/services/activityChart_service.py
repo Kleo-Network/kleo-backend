@@ -1,6 +1,7 @@
 import httpx  # async HTTP client to replace `requests`
 import logging
 from app.settings import settings
+import json
 
 API_KEY = settings.IMGBB_API_KEY
 IMGBB_UPLOAD_IMG_ENDPOINT = f"https://api.imgbb.com/1/upload?key={API_KEY}"
@@ -46,3 +47,36 @@ async def upload_image_to_image_bb(image_data: str) -> str:
     except Exception as e:
         logger.error(f"An error occurred while uploading the image: {e}")
         raise Exception("An error occurred while uploading the image.")
+
+
+async def get_top_activities(activity_counts):
+    """Calculate top activities from the activity counts."""
+    try:
+        if isinstance(activity_counts, str):
+            data = json.loads(activity_counts)
+
+        activity_counts = {
+            activity: int(count) for activity, count in activity_counts.items()
+        }
+
+        total_activities = sum(activity_counts.values())
+
+        if total_activities == 0:
+            raise ValueError(
+                "Total activities count is zero, cannot compute percentages."
+            )
+
+        activity_percentages = [
+            {"label": activity, "percentage": round((count / total_activities) * 100)}
+            for activity, count in activity_counts.items()
+        ]
+
+        top_activities = sorted(
+            activity_percentages, key=lambda x: x["percentage"], reverse=True
+        )[:8]
+
+        return top_activities
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise

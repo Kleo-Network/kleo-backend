@@ -134,3 +134,21 @@ async def fetch_users_referrals(address: str) -> list:
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         return {"error": "An error occurred while fetching referrals."}, 500
+
+
+async def get_activity_json(address):
+    """Fetch the user's activity JSON from the database."""
+    try:
+        user = await db.users.find_one(
+            {"address": address},
+            {"_id": 0, "activity_json": 1},  # Exclude _id, include only activity_json
+        )
+
+        if user:
+            return user.get("activity_json", "")  # Return activity_json if it exists
+        else:
+            return {}  # Return empty dict if user not found
+
+    except Exception as e:
+        print(f"An error occurred while retrieving activity json: {e}")
+        return None
