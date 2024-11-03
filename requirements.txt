@@ -3,3 +3,4 @@ uvicorn
 motor  # For MongoDB async driver
 pydantic
 python-dotenv
+httpx
