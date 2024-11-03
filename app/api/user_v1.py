@@ -64,3 +64,22 @@ async def get_top_users(
         raise HTTPException(
             status_code=500, detail="An error occurred while fetching top users"
         )
+
+
+@router.get("/rank/{userAddress}")
+async def get_user_rank(userAddress: str):
+    """
+    Fetch the user's rank according to kleo_points.
+    """
+    try:
+        rank_data = await calculate_rank(userAddress)
+
+        # Handle error if the user is not found or if there's an issue with calculation
+        if "error" in rank_data:
+            raise HTTPException(status_code=404, detail=rank_data["error"])
+
+        return rank_data
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="An error occurred while fetching user's rank"
+        )
