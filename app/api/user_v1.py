@@ -1,6 +1,7 @@
 # app/api/user_v1.py
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from app.services.activityChart_service import upload_image_to_image_bb
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from app.services.user_service import (
     calculate_rank,
@@ -103,3 +104,29 @@ async def get_user_referrals(userAddress: str):
         raise HTTPException(
             status_code=500, detail="An error occurred while fetching user's referrals"
         )
+
+
+@router.post("/upload_activity_chart")
+async def upload_activity_chart(request: Request):
+    """
+    Upload an activity chart (image) and return the URL after uploading it to Imgbb.
+    """
+    try:
+        # Retrieve the JSON data from the request
+        data = await request.json()
+        image_data = data.get("image")
+
+        if not image_data:
+            raise HTTPException(status_code=400, detail="No image data provided")
+
+        # Call the function to upload the image to Imgbb
+        image_url = await upload_image_to_image_bb(image_data)
+
+        if image_url:
+            return JSONResponse(content={"url": image_url}, status_code=200)
+        else:
+            raise HTTPException(status_code=500, detail="Image upload failed")
+
+    except Exception as e:
+        logger.error(f"An error occurred while uploading the image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

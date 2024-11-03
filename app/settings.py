@@ -10,6 +10,7 @@ class Settings:
     PROJECT_NAME: str = "KLEO Backend"
     DB_URL: str = os.getenv("DB_URL")
     DB_NAME: str = os.getenv("DB_NAME")
+    IMGBB_API_KEY: str = os.getenv("IMGBB_API_KEY")
 
 
 settings = Settings()
