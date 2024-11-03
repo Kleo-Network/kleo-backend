@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from app.services.user_service import (
     calculate_rank,
+    fetch_users_referrals,
     find_by_address,
     get_top_users_by_kleo_points,
 )
@@ -82,4 +83,23 @@ async def get_user_rank(userAddress: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail="An error occurred while fetching user's rank"
+        )
+
+
+@router.get("/referrals/{userAddress}")
+async def get_user_referrals(userAddress: str):
+    """
+    Fetch the user's referrals based on the user's address.
+    """
+    try:
+        referrals = await fetch_users_referrals(userAddress)
+
+        # If an error occurs or no referrals are found
+        if "error" in referrals:
+            raise HTTPException(status_code=404, detail=referrals["error"])
+
+        return referrals
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="An error occurred while fetching user's referrals"
         )

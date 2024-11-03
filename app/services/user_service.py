@@ -90,3 +90,47 @@ async def calculate_rank(address: str):
             f"An error occurred while calculating rank for address {address}: {e}"
         )
         return {"error": "An error occurred while calculating rank"}, 500
+
+
+async def fetch_users_referrals(address: str) -> list:
+    """
+    Fetch the user's referrals from MongoDB and include their kleo points.
+    """
+    try:
+        # Fetch the user's data based on the address
+        user = await db.users.find_one({"address": address})
+
+        if not user:
+            return {"error": "User not found"}, 404
+
+        # Get the referrals list from the user's data
+        referrals = user.get("referrals", [])
+        if not referrals:
+            return []
+
+        # Initialize a list to store referral details
+        referral_details = []
+
+        # Iterate through each referral and get their kleo_points
+        for referral in referrals:
+            referred_user = await db.users.find_one(
+                {"address": referral["address"]}, {"kleo_points": 1, "_id": 0}
+            )
+
+            # Extract kleo_points if user is found, otherwise default to 0
+            kleo_points = referred_user.get("kleo_points", 0) if referred_user else 0
+
+            # Append the referral data along with kleo_points
+            referral_details.append(
+                {
+                    "address": referral["address"],
+                    "joining_date": referral["joining_date"],
+                    "kleo_points": kleo_points,
+                }
+            )
+
+        return referral_details
+
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return {"error": "An error occurred while fetching referrals."}, 500
