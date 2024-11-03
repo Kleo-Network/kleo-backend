@@ -8,6 +8,12 @@ class CreateUserRequest(BaseModel):
     address: str
 
 
+class SaveHistoryRequest(BaseModel):
+    address: str
+    signup: bool
+    history: list
+
+
 class User:
     def __init__(
         self,

@@ -15,7 +15,7 @@ from app.services.user_service import (
     get_activity_json,
     get_top_users_by_kleo_points,
 )
-from app.models.user_models import CreateUserRequest, User
+from app.models.user_models import CreateUserRequest, SaveHistoryRequest, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -197,3 +197,16 @@ async def create_user(request: CreateUserRequest):
     }
 
     return user_data
+
+
+@router.post("/save-history")
+async def save_history(request: SaveHistoryRequest):
+    try:
+        user_address = request.address.lower()
+        signup = request.signup
+        history = request.history
+
+        # Placeholder response, no further processing at this moment
+        return {"status": "success", "message": "History received successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
