@@ -1,5 +1,7 @@
 # app/services/user_service.py
+from datetime import datetime, timezone
 import logging
+from urllib.parse import parse_qs, urlparse
 from app.mongodb import db  # Import the db object from mongodb.py
 
 logger = logging.getLogger(__name__)
@@ -185,3 +187,72 @@ async def get_activity_json(address):
     except Exception as e:
         print(f"An error occurred while retrieving activity json: {e}")
         return None
+
+
+async def find_referral_in_history(history):
+    """
+    Finds the referrer address in the user's history if available.
+    Looks for visits to the Chrome Web Store with a 'refAddress' parameter.
+    Example URL:
+    https://chromewebstore.google.com/detail/kleo-network/jimpblheogbjfgajkccdoehjfadmimoo?refAddress=XYZ
+    """
+    for item in history:
+        url = item.get("url")
+        if url and "chromewebstore.google.com/detail/kleo-network" in url:
+            # Parse the query parameters to find 'refAddress'
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            ref_address = query_params.get("refAddress")
+            if ref_address:
+                return ref_address[0]  # Return the first 'refAddress' found
+
+    return None
+
+
+async def update_referee_and_bonus(user_address: str, referee_address: str):
+    """
+    Updates the user's referee information and assigns the referral bonus.
+    """
+    try:
+        # Get the current timestamp in milliseconds for the joining date
+        current_timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+        referral_bonus = 100
+
+        # Add the referee to the user's record
+        await db.users.update_one(
+            {"address": user_address}, {"$set": {"referee": referee_address}}
+        )
+
+        # Update the kleo_points and referred_count for the referee, and push the referred user to the referrals list
+        await db.users.update_one(
+            {"address": referee_address},
+            {
+                "$inc": {
+                    "kleo_points": referral_bonus,
+                    "milestones.referred_count": 1,  # Increment referred_count by 1
+                },
+                "$push": {
+                    "referrals": {
+                        "address": user_address,
+                        "joining_date": {"$numberLong": str(current_timestamp)},
+                    }
+                },
+            },
+        )
+
+        # Update kleo_points for the referred user
+        await db.users.update_one(
+            {"address": user_address}, {"$inc": {"kleo_points": referral_bonus}}
+        )
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"An error occurred while updating referral: {e}")
+
+
+async def get_history_count(address: str) -> int:
+    """
+    Asynchronously fetch the count of history documents for a given address.
+    """
+    count = await db.history.count_documents({"address": address})
+    return count

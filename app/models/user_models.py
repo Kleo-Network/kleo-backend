@@ -1,4 +1,5 @@
 # user.models.py
+from typing import List, Optional
 from pydantic import BaseModel
 from app.services.user_service import find_by_address_complex
 from app.mongodb import user_collection
@@ -12,6 +13,16 @@ class SaveHistoryRequest(BaseModel):
     address: str
     signup: bool
     history: list
+
+
+class HistoryItem(BaseModel):
+    content: Optional[str] = None
+
+
+class SaveHistoryRequest(BaseModel):
+    address: str
+    signup: bool = False
+    history: List[HistoryItem] = []
 
 
 class User:

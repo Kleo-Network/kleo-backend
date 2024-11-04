@@ -1,6 +1,8 @@
 # app/api/user_v1.py
 import logging
 import random
+from app import celery_app
+from app.const.historyConst import ABI, POLYGON_RPC
 from app.services.activityChart_service import (
     get_top_activities,
     upload_image_to_image_bb,
@@ -12,8 +14,12 @@ from app.services.user_service import (
     calculate_rank,
     fetch_users_referrals,
     find_by_address,
+    find_by_address_complex,
+    find_referral_in_history,
     get_activity_json,
+    get_history_count,
     get_top_users_by_kleo_points,
+    update_referee_and_bonus,
 )
 from app.models.user_models import CreateUserRequest, SaveHistoryRequest, User
 
@@ -205,8 +211,67 @@ async def save_history(request: SaveHistoryRequest):
         user_address = request.address.lower()
         signup = request.signup
         history = request.history
+        return_abi_contract = False
 
-        # Placeholder response, no further processing at this moment
-        return {"status": "success", "message": "History received successfully"}
+        # Fetch the user by address
+        user = await find_by_address_complex(user_address)
+
+        try:
+            if signup:
+                referee_address = find_referral_in_history(history)
+                if referee_address:
+                    await update_referee_and_bonus(user_address, referee_address)
+
+                # TODO: Change this to CELERY task.
+                celery_app.send_task(
+                    "contextual_activity_classification_for_batch",
+                    args=[history, user_address],
+                    options={"queue": "activity-classification"},
+                )
+                return {"data": "Signup successful!"}
+            else:
+                # Check if the user has more than 50 history records
+                if await get_history_count(user_address) > 50:
+                    return_abi_contract = True
+
+                for item in history:
+                    if item.content:
+                        user = await find_by_address(user_address)
+                        # TODO: Change this to CELERY task.
+                        celery_app.send_task(
+                            "contextual_activity_classification",
+                            args=[item, user_address],
+                            options={"queue": "activity-classification-new"},
+                        )
+
+                if return_abi_contract:
+                    user = await find_by_address_complex(user_address)
+                    previous_hash = user.get("previous_hash", "first_hash")
+                    chain_data_list = [
+                        {
+                            "name": "polygon",
+                            "rpc": POLYGON_RPC,
+                            "contractData": {
+                                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                                "abi": ABI,
+                                "functionName": "safeMint",
+                                "functionParams": [
+                                    user_address,
+                                    previous_hash,
+                                ],
+                            },
+                        }
+                    ]
+
+                    response = {
+                        "chains": chain_data_list,
+                        "password": user.get("slug"),
+                    }
+                    return {"data": response}
+
+                return {"status": "success", "message": "History saved successfully"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

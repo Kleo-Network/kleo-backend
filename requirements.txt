@@ -5,3 +5,5 @@ pydantic
 python-dotenv
 httpx
 PyJWT
+celery
+kombu
