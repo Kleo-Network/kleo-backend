@@ -267,7 +267,9 @@ async def save_history(request: SaveHistoryRequest):
                                 },  # Send plain dicts
                             )
 
-                        # logger.info(f"Single Activity API response: {response.json()}")
+                        logger.info(
+                            f"Single Activity API response \n\n: {response.json()}"
+                        )
 
                         # Handle 202 status code as success
                         if response.status_code == 202:
