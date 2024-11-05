@@ -1,7 +1,7 @@
 # app/api/user_v1.py
 import logging
 import random
-from app import celery_app
+import httpx
 from app.const.historyConst import ABI, POLYGON_RPC
 from app.services.activityChart_service import (
     get_top_activities,
@@ -22,6 +22,8 @@ from app.services.user_service import (
     update_referee_and_bonus,
 )
 from app.models.user_models import CreateUserRequest, SaveHistoryRequest, User
+
+CELERY_API_BASE_URL = "https://api.kleo.network/api/v1/core/tasks/tasks"
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -210,7 +212,7 @@ async def save_history(request: SaveHistoryRequest):
     try:
         user_address = request.address.lower()
         signup = request.signup
-        history = request.history
+        history = request.history  # Treat history as a list of dictionaries
         return_abi_contract = False
 
         # Fetch the user by address
@@ -218,31 +220,65 @@ async def save_history(request: SaveHistoryRequest):
 
         try:
             if signup:
-                referee_address = find_referral_in_history(history)
+                referee_address = await find_referral_in_history(history)
                 if referee_address:
                     await update_referee_and_bonus(user_address, referee_address)
 
-                # TODO: Change this to CELERY task.
-                celery_app.send_task(
-                    "contextual_activity_classification_for_batch",
-                    args=[history, user_address],
-                    options={"queue": "activity-classification"},
-                )
-                return {"data": "Signup successful!"}
+                # Replace CELERY task with API call (classify-batch-activity)
+                batch_activity_url = f"{CELERY_API_BASE_URL}/classify-batch-activity"
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        batch_activity_url,
+                        json={"address": user_address, "history": history},
+                    )
+
+                logger.info(f"Batch Activity API response: {response.json()}")
+
+                # Check if the task was accepted (202 status)
+                if response.status_code == 202:
+                    return {"data": "Signup successful!"}
+                else:
+                    raise HTTPException(
+                        status_code=response.status_code, detail=response.text
+                    )
+
             else:
                 # Check if the user has more than 50 history records
                 if await get_history_count(user_address) > 50:
                     return_abi_contract = True
 
+                task_responses = []  # To collect all task responses
+
+                # Iterate over each item in the history and trigger API calls
                 for item in history:
-                    if item.content:
-                        user = await find_by_address(user_address)
-                        # TODO: Change this to CELERY task.
-                        celery_app.send_task(
-                            "contextual_activity_classification",
-                            args=[item, user_address],
-                            options={"queue": "activity-classification-new"},
+                    if item.get(
+                        "content"
+                    ):  # Check if 'content' field exists in the dictionary
+                        single_activity_url = (
+                            f"{CELERY_API_BASE_URL}/classify-single-activity"
                         )
+
+                        async with httpx.AsyncClient() as client:
+                            response = await client.post(
+                                single_activity_url,
+                                json={
+                                    "address": user_address,
+                                    "activity": item,
+                                },  # Send plain dicts
+                            )
+
+                        # logger.info(f"Single Activity API response: {response.json()}")
+
+                        # Handle 202 status code as success
+                        if response.status_code == 202:
+                            task_responses.append(response.json())
+                        else:
+                            raise HTTPException(
+                                status_code=response.status_code, detail=response.text
+                            )
+
+                # Log all task responses for activities
+                logger.info(f"All task responses: {task_responses}")
 
                 if return_abi_contract:
                     user = await find_by_address_complex(user_address)
@@ -263,13 +299,18 @@ async def save_history(request: SaveHistoryRequest):
                         }
                     ]
 
-                    response = {
+                    response_data = {
                         "chains": chain_data_list,
                         "password": user.get("slug"),
                     }
-                    return {"data": response}
+                    return {"data": response_data}
 
-                return {"status": "success", "message": "History saved successfully"}
+                # Return all task responses if successful
+                return {
+                    "status": "success",
+                    "tasks": task_responses,
+                    "message": "History saved successfully",
+                }
         except Exception as e:
             return {"status": "error", "message": str(e)}
 

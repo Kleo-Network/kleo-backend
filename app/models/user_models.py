@@ -15,14 +15,10 @@ class SaveHistoryRequest(BaseModel):
     history: list
 
 
-class HistoryItem(BaseModel):
-    content: Optional[str] = None
-
-
 class SaveHistoryRequest(BaseModel):
     address: str
     signup: bool = False
-    history: List[HistoryItem] = []
+    history: List = []
 
 
 class User:
