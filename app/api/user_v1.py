@@ -149,7 +149,7 @@ async def get_user_graph(userAddress: str):
         # Directly get the activity json
         activity_json = await get_activity_json(userAddress)
         if not activity_json:
-            return {"error": "No activity data available"}, 404
+            return {"processing": {"error": True}}
 
         # Get top activities from the activity_json
         top_activities = await get_top_activities(activity_json)
@@ -205,8 +205,11 @@ async def save_history(request: SaveHistoryRequest):
         user_address = request.address.lower()
         signup = request.signup
         history = request.history
-
+        response = {
+                    "chains": [],
+                    "password": "123445"
+                }
+        return jsonify({"data": response}), 200
         # Placeholder response, no further processing at this moment
-        return {"status": "success", "message": "History received successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
