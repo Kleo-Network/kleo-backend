@@ -202,6 +202,7 @@ async def create_user(request: CreateUserRequest):
 @router.post("/save-history")
 async def save_history(request: SaveHistoryRequest):
     try:
+        print("Request Data:", request.__dict__)
         user_address = request.address.lower()
         signup = request.signup
         history = request.history
