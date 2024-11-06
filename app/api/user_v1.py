@@ -199,18 +199,21 @@ async def create_user(request: CreateUserRequest):
     return user_data
 
 
-    @router.post("/save-history")
-    async def save_history(request: SaveHistoryRequest):
-        try:
-            print("Request Data:", request.__dict__)
-            # user_address = request.address.lower()
-            # signup = request.signup
-            # history = request.history
-            response = {
-                        "chains": [],
-                        "password": "123445"
-                    }
-            return jsonify({"data": response}), 200
-            # Placeholder response, no further processing at this moment
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+@router.post("/save-history")
+async def save_history(request: SaveHistoryRequest):
+    try:
+        #print("Request Data:", request.__dict__)
+        user_address = request.address.lower()
+        print(user_address)
+        signup = request.signup
+        print(signup)
+        history = request.history
+        print(history)
+        response = {
+                    "chains": [],
+                    "password": "123445"
+                }
+        return jsonify({"data": response}), 200
+        # Placeholder response, no further processing at this moment
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
