@@ -8,7 +8,7 @@ db = client[settings.DB_NAME]  # Access the database using the name from setting
 
 # Define the user collection
 user_collection = db["users"]
-
+history_collection = db["history"]
 
 async def close_db_connection():
     """

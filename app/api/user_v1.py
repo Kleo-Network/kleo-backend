@@ -8,6 +8,7 @@ from app.services.activityChart_service import (
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from app.services.auth_service import get_jwt_token
+from app.services.history_services import get_history_count
 from app.services.user_service import (
     calculate_rank,
     fetch_users_referrals,
@@ -15,7 +16,8 @@ from app.services.user_service import (
     get_activity_json,
     get_top_users_by_kleo_points,
 )
-from app.models.user_models import CreateUserRequest, SaveHistoryRequest, User
+from app.models.user_model import CreateUserRequest, SaveHistoryRequest, User
+from .constants import ABI, POLYGON_RPC
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -202,16 +204,55 @@ async def create_user(request: CreateUserRequest):
 @router.post("/save-history")
 async def save_history(request: SaveHistoryRequest):
     try:
-        #print("Request Data:", request.__dict__)
+        if not request.address or request.signup or request.history:
+            raise HTTPException(status_code=400, detail="Address is required")
+        
         user_address = request.address.lower()
-        print(user_address)
         signup = request.signup
-        print(signup)
-        history = request.history
-        print(history)
+        history_items = request.history
+
+        user = find_by_address_complex(user_address)
+        
+        for item in history_items:
+            try:
+                history = History(
+                    address=user_address,
+                    title=item.get('title', ''),
+                    category=item.get('category', ''),
+                    subcategory=item.get('subcategory', ''),
+                    url=item.get('url', ''),
+                    domain=item.get('domain', ''),
+                    summary=item.get('content', ''),
+                    visitTime=float(item.get('lastVisitTime', 0))
+                )
+                result = await history.save()
+                if result:
+                    saved_items.append(result.inserted_id)
+            except (AssertionError, ValueError) as e:
+                logger.error(f"Error saving history item: {str(e)}")
+                continue
+        
+        chain_data_list = []
+        if get_history_count(address) > 10:
+            chain_data_list = [
+                        {
+                            "name": "polygon",
+                            "rpc": POLYGON_RPC,
+                            "contractData": {
+                                "address": "0xD133A1aE09EAA45c51Daa898031c0037485347B0",
+                                "abi": ABI,
+                                "functionName": "safeMint",
+                                "functionParams": [
+                                    user_address,
+                                    user.get("previous_hash", "default_hash"),
+                                ],
+                            },
+                        }
+                    ]
+
         response = {
-                    "chains": [],
-                    "password": "123445"
+                    "chains": chain_data_list,
+                    "password": user.get("slug")
                 }
         return jsonify({"data": response}), 200
         # Placeholder response, no further processing at this moment
