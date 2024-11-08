@@ -16,7 +16,8 @@ from app.services.user_service import (
     get_activity_json,
     get_top_users_by_kleo_points,
 )
-from app.models.user_model import CreateUserRequest, SaveHistoryRequest, User
+from app.models.user_model import CreateUserRequest, User
+from app.models.history_model import SaveHistoryRequest
 from .constants import ABI, POLYGON_RPC
 
 router = APIRouter()
