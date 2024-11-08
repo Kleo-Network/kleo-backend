@@ -43,7 +43,7 @@ class History:
             "visitTime": visitTime,
         }
 
-    def save(self):
+    async def save(self):
         existing_user = await find_by_address_complex(self.document["address"])
         if not existing_user:
             new_user = User(address=self.document["address"])
