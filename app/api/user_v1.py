@@ -209,10 +209,14 @@ async def save_history(request: SaveHistoryRequest):
             raise HTTPException(status_code=400, detail="Address is required")
         
         user_address = request.address.lower()
+        print(user_address)
         signup = request.signup
+        print(signup)
         history_items = request.history
+        print(history_items)
 
         user = find_by_address_complex(user_address)
+        print(user)
         
         for item in history_items:
             try:
@@ -226,14 +230,15 @@ async def save_history(request: SaveHistoryRequest):
                     summary=item.get('content', ''),
                     visitTime=float(item.get('lastVisitTime', 0))
                 )
+                print(history)
                 result = await history.save()
-                if result:
-                    saved_items.append(result.inserted_id)
+                print(result)
             except (AssertionError, ValueError) as e:
                 logger.error(f"Error saving history item: {str(e)}")
-                continue
+                pass
         
         chain_data_list = []
+        print(get_history_count(address))
         if get_history_count(address) > 10:
             chain_data_list = [
                         {
@@ -250,6 +255,7 @@ async def save_history(request: SaveHistoryRequest):
                             },
                         }
                     ]
+            print(chain_data_list)
 
         response = {
                     "chains": chain_data_list,
