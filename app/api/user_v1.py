@@ -18,7 +18,7 @@ from app.services.user_service import (
 )
 from app.models.user_model import CreateUserRequest, User
 from app.models.history_model import SaveHistoryRequest
-from .constants import ABI, POLYGON_RPC
+from app.constants import ABI, POLYGON_RPC
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
