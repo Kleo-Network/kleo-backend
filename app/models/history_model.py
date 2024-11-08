@@ -2,6 +2,8 @@
 from pydantic import BaseModel
 from app.services.user_service import find_by_address_complex
 from app.mongodb import history_collection
+from datetime import datetime
+from app.models.user import User
 
 class SaveHistoryRequest(BaseModel):
     address: str
